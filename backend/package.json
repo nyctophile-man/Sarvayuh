@@ -1,0 +1,43 @@
+{
+  "name": "sarvayuh-backend",
+  "version": "0.2.0",
+  "scripts": {
+    "infra": "docker compose -f infrastructure/docker-compose.yml up -d",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prestart": "npm run build",
+    "start": "tsx api-gateway/server.js",
+    "dev": "tsx watch api-gateway/server.js",
+    "migrate:ai": "tsx modules/ai-service/migrate.ts",
+    "kb:ingest": "tsx modules/ai-service/rag/ingest.ts",
+    "worker": "node infrastructure/queue/worker.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "@expo/vector-icons": "^15.0.2",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.12.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "expo-camera": "~58.0.12",
+    "expo-haptics": "~58.0.7",
+    "expo-status-bar": "~58.0.4",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.12.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "tsx": "^4.20.6"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.15.5",
+    "typescript": "^6.0.3"
+  }
+}

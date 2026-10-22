@@ -1,35 +1,40 @@
-import { StatusBar } from 'expo-status-bar';
-import { Platform, StyleSheet } from 'react-native';
+// @ts-nocheck
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity as T } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { C, s } from '@/constants/theme';
+import QR from '@/components/QRCode';
+import { getMedcard } from '@/lib/api';
+import { useI18n } from '@/lib/i18n/context';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+export default function QRModal() {
+  const router = useRouter();
+  const { qrToken } = useLocalSearchParams();
+  const { t } = useI18n();
+  const [card, setCard] = useState(null);
 
-export default function ModalScreen() {
+  useEffect(() => {
+    getMedcard().then(setCard).catch(() => {});
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Modal</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/modal.tsx" />
-
-      {/* Use a light status bar on iOS to account for the black space above the modal */}
-      <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
-    </View>
+    <T activeOpacity={1} onPress={() => router.back()} style={s.modal}>
+      <View style={{ backgroundColor: '#fff', padding: 20, borderRadius: 20, alignItems: 'center' }}>
+        <Text style={{ fontWeight: '700', marginBottom: 10, color: C.ink }}>{t('qr.title')}</Text>
+        <View style={{ backgroundColor: '#fff', padding: 10, borderRadius: 10, marginBottom: 10 }}>
+          <QR size={220} value={String(qrToken || '')} />
+        </View>
+        {qrToken ? (
+          <View style={{ marginBottom: 8 }}>
+            <Text style={{ fontSize: 11, color: C.mute, marginBottom: 4 }}>{t('qr.scanCode')}</Text>
+            <Text style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: '700', color: C.deep }}>{qrToken}</Text>
+          </View>
+        ) : null}
+        <Text style={{ color: C.mute, fontSize: 12 }}>
+          {card ? `${card.name} · ${card.card_id}` : t('qr.default')}
+        </Text>
+        <Text style={{ color: C.mute, fontSize: 12 }}>{t('qr.footer')}</Text>
+      </View>
+    </T>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
-});

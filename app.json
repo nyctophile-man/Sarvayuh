@@ -8,9 +8,19 @@
     "scheme": "sarvayuhmobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow Sarvayuh to access your photos to upload health records.",
+        "NSDocumentsFolderUsageDescription": "Allow Sarvayuh to access your documents to upload health records."
+      }
     },
     "android": {
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -26,6 +36,8 @@
     },
     "plugins": [
       "expo-router",
+      "expo-document-picker",
+      "expo-image-picker",
       [
         "expo-splash-screen",
         {
@@ -33,7 +45,8 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

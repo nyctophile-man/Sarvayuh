@@ -1,0 +1,14 @@
+﻿{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["Ai/**/*.ts", "infrastructure/database/*.ts", "modules/ai-service/**/*.ts"],
+  "exclude": ["node_modules", "dist", "Ai/example-integration.ts"]
+}
