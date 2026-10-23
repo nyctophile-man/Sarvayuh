@@ -4,17 +4,19 @@ import { View, Text, TouchableOpacity as T } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { C, s } from '@/constants/theme';
 import QR from '@/components/QRCode';
-import { getMedcard } from '@/lib/api';
+import { getMedcard, postMedcardQr } from '@/lib/api';
 import { useI18n } from '@/lib/i18n/context';
 
 export default function QRModal() {
   const router = useRouter();
-  const { qrToken } = useLocalSearchParams();
+  const { qrToken: initialToken } = useLocalSearchParams();
   const { t } = useI18n();
   const [card, setCard] = useState(null);
+  const [qrToken, setQrToken] = useState(initialToken || '');
 
   useEffect(() => {
     getMedcard().then(setCard).catch(() => {});
+    postMedcardQr().then((result) => setQrToken(result.qrToken)).catch(() => {});
   }, []);
 
   return (

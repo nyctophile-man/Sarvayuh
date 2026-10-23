@@ -3,20 +3,19 @@ import { getAuthUser } from '@/lib/api';
 import { D, DoctorProvider, useDoc } from '@/lib/doctor';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Tabs, useNavigation, useRouter } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-function Bar({ state, navigation: tabNavigation }) {
+function Bar({ state, navigation }) {
   const ins = useSafeAreaInsets(), r = useRouter();
-  const navigation = useNavigation() ?? tabNavigation;
   const { inbox } = useDoc();
   const cur = state.routes[state.index].name;
   if (!['index', 'patients', 'inbox', 'calendar'].includes(cur)) return null; // hide on scan / patient
   const item = (name, label, icon, unread = 0) => {
     const on = cur === name;
     return (
-      <Pressable key={name} style={{ flex: 1, alignItems: 'center', paddingTop: 10 }} onPress={() => { Haptics.selectionAsync(); navigation?.navigate(name); }}>
+      <Pressable key={name} style={{ flex: 1, alignItems: 'center', paddingTop: 10 }} onPress={() => { const route = state.routes.find((rt) => rt.name === name); Haptics.selectionAsync(); if (route) navigation?.emit?.({ type: 'tabPress', target: route.key, canPreventDefault: true }); if (cur !== name) r.navigate(name === 'index' ? '/(doctor)' : `/(doctor)/${name}`); }}>
         <View>
           <Ionicons name={on ? icon : icon + '-outline'} size={22} color={on ? D.teal : D.mute} />
           {unread > 0 && <View style={{ position: 'absolute', right: -3, top: -2, width: 9, height: 9, borderRadius: 5, backgroundColor: D.red }} />}

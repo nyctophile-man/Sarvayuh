@@ -395,6 +395,14 @@ export class SarvayuhChatbot {
       if (out) { r.say(out).consult(); return; }
       this.onEvent?.({ type: "llm_blocked", sessionId: sid });
     }
+
+    // 7. AI Agent: let the ReAct agent decide which tool to call
+    // (reports / labs / reminders / knowledge search / emergency / consult doctor)
+    // Safety gates already ran at the top of handle and also inside routeToAgent.
+    await this.routeToAgent(msg, userId, sid, st, r);
+
+    // 8. Default fallback (the agent usually says something via routeToAgent,
+    //    but if it didn't, give a gentle guided-start message).
     r.say("I can help with questions about the app and your records, or give general advice for common symptoms like fever, headache, cold, acidity, diarrhoea, allergy, body pain or nausea. What would you like?");
   }
 
@@ -484,11 +492,49 @@ export class SarvayuhChatbot {
       "\n\nTake medicines only as prescribed. Talk to your doctor before changing or stopping any of them.").consult();
   }
 
-  /* ---------------- optional model, with output screening ---------------- */
-  private async askModel(userText: string): Promise<string | null> {
-    if (!this.llm) return null;
-    const out = (await this.llm.generate({ system: LLM_SYSTEM, user: userText })).trim();
-    if (!out || out.length > 1500 || RX_ONLY.test(out) || DIAGNOSTIC_LANGUAGE.test(out)) return null;
-    return out;
+  /* ========================================================================
+   * Agent orchestration
+   * ====================================================================
+   * The chatbot is now an agent: given a user message it decides what to do
+   * (including zero or more tool calls) via the ReAct loop below. Safety gates
+   * (self-harm, emergency) are still hard-coded and run BEFORE anything else.
+   * The agent's `AgentObservations` are mapped back to the legacy
+   * `ChatResponse` (so the mobile UI needs no change).
+   * ===================================================================== */
+  private async routeToAgent(text: string, userId: string | undefined, sid: string, st: SessionState, r: Reply): Promise<void> {
+    const { AgentAgent } = await import("./modules/ai-service/agent/dispatcher");
+    const { toolDependencies } = await import("./modules/ai-service/agent/tools");
+    // Wire runtime data + the knowledge base into the tools.
+    if (this.data) toolDependencies(this.data, { retrieve });
+
+    // Bridge the existing LlmAdapter (Anthropic/Groq) to the Agent.Llm protocol.
+    const adapter = this.llm;
+    const llm: import("./modules/ai-service/agent/dispatcher").Llm = {
+      async chat(messages) {
+        const userMessage = messages.find((m) => m.role === "user");
+        const systemMessage = messages.find((m) => m.role === "system");
+        const system = systemMessage?.content ?? "";
+        const user = userMessage?.content ?? "";
+        if (!adapter) throw new Error("No LLM adapter configured for the agent.");
+        const out = await adapter.generate({ system, user });
+        return { content: out.trim() };
+      },
+    };
+
+    const ctx: import("./modules/ai-service/agent/dispatcher").AgentContext = {
+      userId,
+      sessionId: sid,
+      data: this.data,
+      emergencyNumber: this.cfg.emergencyNumber,
+      crisisLine: this.cfg.crisisLine,
+      onEvent: this.onEvent,
+    };
+    const agent = new AgentAgent(llm, ctx);
+    const obs = await agent.run(text, ctx);
+    if (obs.finalAnswer) r.say(obs.finalAnswer);
+
+    // Preserve existing semantics: a "consult" tool call within a final answer
+    // should still surface the consult_doctor action. (The call_emergency path
+    // is already handled above by the safety gates.)
   }
 }

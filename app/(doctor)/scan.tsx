@@ -1,24 +1,58 @@
 // @ts-nocheck
 import React, { useRef, useState } from 'react';
-import { View, Text, Pressable, TextInput, Alert } from 'react-native';
+import { View, Text, Pressable, TextInput, Alert, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { D } from '@/lib/doctor';
-import { getDoctorPatients } from '@/lib/api';
+import { D, useDoc } from '@/lib/doctor';
+import { getDoctorPatients, getPublicShare, publicShareFileUrl } from '@/lib/api';
 
 const Corner = ({ s }) => <View style={[{ position: 'absolute', width: 34, height: 34, borderColor: '#fff', borderRadius: 6 }, s]} />;
 
 export default function Scan() {
   const r = useRouter(), ins = useSafeAreaInsets();
+  const { refreshInbox, refreshPatients } = useDoc();
   const [perm, ask] = useCameraPermissions();
   const [mode, setMode] = useState('scan'), [torch, setTorch] = useState(false), [id, setId] = useState('');
   const locked = useRef(false);
 
   const lookup = async (raw) => {
+    const shareMatch = /shares\/public\/([A-Za-z0-9_-]+)/i.exec(raw || '') ||
+      /^([A-Fa-f0-9]{48})$/.exec(String(raw || '').trim());
+    if (shareMatch) {
+      try {
+        const token = shareMatch[1];
+        const manifest = await getPublicShare(token);
+        const names = (manifest.records || []).map((record) => record.title).join(', ');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        refreshInbox().catch(() => {});
+        refreshPatients().catch(() => {});
+        Alert.alert(
+          'Shared records found',
+          `${manifest.records?.length || 0} file(s): ${names || 'records'}`,
+          [
+            { text: 'Close', style: 'cancel', onPress: () => (locked.current = false) },
+            {
+              text: 'Open first file',
+              onPress: () => {
+                locked.current = false;
+                const first = manifest.records?.[0];
+                if (first) Linking.openURL(publicShareFileUrl(token, first.id)).catch(() => {});
+              },
+            },
+          ],
+        );
+        return;
+      } catch (error) {
+        locked.current = false;
+        Alert.alert('Could not open shared records', error instanceof Error ? error.message : 'Please check the QR code and try again.');
+        return;
+      }
+    }
+
     const m = /SVH-\d{4}-\d{4}/i.exec(raw || '');
     if (!m) {
       Alert.alert('Invalid Health ID', 'Enter or scan a valid MedCard / Health ID.', [{ text: 'OK', onPress: () => (locked.current = false) }]);

@@ -2,6 +2,7 @@ import express, { type Request, type Response, type Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { SarvayuhChatbot } from "../../Ai/sarvayuh-chatbot";
 import { AnthropicRagAdapter } from "./llm/anthropic-adapter";
+import { GroqAdapter } from "./llm/groq-adapter";
 import { healthData } from "./health-data";
 import {
   deleteAllForUser,
@@ -21,7 +22,7 @@ type AuthenticatedRequest = Request & { user: { id: string } };
 
 const bot = new SarvayuhChatbot({
   healthData,
-  llm: process.env.ANTHROPIC_API_KEY ? new AnthropicRagAdapter() : undefined,
+  llm: createLlmAdapter(),
   sessionStore: new PgSessionStore(),
   emergencyNumber: process.env.EMERGENCY_NUMBER || "112",
   crisisLine: process.env.CRISIS_LINE || "Tele-MANAS 14416 (India)",
@@ -29,6 +30,12 @@ const bot = new SarvayuhChatbot({
     console.log("[chat]", event.type, event.sessionId);
   },
 });
+
+function createLlmAdapter(): import("../../Ai/sarvayuh-chatbot").LlmAdapter | undefined {
+  if (process.env.GROQ_API_KEY) return new GroqAdapter();
+  if (process.env.ANTHROPIC_API_KEY) return new AnthropicRagAdapter();
+  return undefined;
+}
 
 const aiRouter: Router = express.Router();
 const aiLimit = rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: true, legacyHeaders: false });
